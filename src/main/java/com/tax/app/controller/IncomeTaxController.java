@@ -1,5 +1,7 @@
 package com.tax.app.controller;
 
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,5 +34,11 @@ public class IncomeTaxController {
 	@GetMapping("/taxDetail/{userName}")
 	public UserTaxDetailModel findTaxDetailsByUserName(@PathVariable String userName) {
 		return service.getTaxDetailsByUserName(userName);
+	}
+	
+	@GetMapping("/taxTab/{userName}")
+	public Map<String,Double> getUserTaxMap(@PathVariable String userName){
+		return service.getTaxDetailMapForUser(userName);
+		
 	}
 }

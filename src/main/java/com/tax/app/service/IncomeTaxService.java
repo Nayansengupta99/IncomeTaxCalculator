@@ -2,6 +2,7 @@ package com.tax.app.service;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,6 +46,12 @@ public class IncomeTaxService implements IncomeTaxServiceIfc {
 		return userTaxDetailsRepo.findByUserName(userName);
 	}
 
+	public Map<String, Double> getTaxDetailMapForUser(String userName) {
+		UserTaxDetailModel userTaxDetailModel = getTaxDetailsByUserName(userName);
+		Map<String, Double> userTaxMap = calculateTaxUserMap(userTaxDetailModel.getSalary());
+		return userTaxMap;
+	}
+
 	public String saveUserTaxDetails(UserTaxDetailModel taxDetailModel) {
 		if (taxDetailModel != null) {
 			List<UserTaxDetailModel> list = userTaxDetailsRepo.findAll();
@@ -52,14 +59,14 @@ public class IncomeTaxService implements IncomeTaxServiceIfc {
 					.filter(x -> x.getUserName().equalsIgnoreCase(taxDetailModel.getUserName()))
 					.collect(Collectors.toList()).size() > 0 ? Boolean.TRUE : Boolean.FALSE;
 			if (!existingUserTaxDetail) {
-				if(repo.findUserIdByUserName(taxDetailModel.getUserName())!=null) {
-				taxDetailModel.setUserId(repo.findUserIdByUserName(taxDetailModel.getUserName()).getUserId());
-				taxDetailModel.setUserName(taxDetailModel.getUserName());
-				taxDetailModel.setSalary(taxDetailModel.getSalary());
-				taxDetailModel.setIncomeTax(calculateTax(taxDetailModel.getSalary()));
-				taxDetailModel.setTaxableSalary(taxDetailModel.getSalary().add(BigInteger.valueOf(-75000)));
-				userTaxDetailsRepo.save(taxDetailModel);}
-				else {
+				if (repo.findUserIdByUserName(taxDetailModel.getUserName()) != null) {
+					taxDetailModel.setUserId(repo.findUserIdByUserName(taxDetailModel.getUserName()).getUserId());
+					taxDetailModel.setUserName(taxDetailModel.getUserName());
+					taxDetailModel.setSalary(taxDetailModel.getSalary());
+					taxDetailModel.setIncomeTax(calculateTax(taxDetailModel.getSalary()));
+					taxDetailModel.setTaxableSalary(taxDetailModel.getSalary().add(BigInteger.valueOf(-75000)));
+					userTaxDetailsRepo.save(taxDetailModel);
+				} else {
 					return "User not found. Please Register first.";
 				}
 			} else {
@@ -131,6 +138,42 @@ public class IncomeTaxService implements IncomeTaxServiceIfc {
 		}
 
 		return incTax;
+
+	}
+
+	public Map<String, Double> calculateTaxUserMap(BigInteger inHandSalary) {
+
+		float incTax = 0;
+
+		Map<String, Double> taxMap = new LinkedHashMap<String, Double>();
+
+		List<String> taxSlabConstant = Arrays.asList("300000  -  700000 for 5%", "700000  -  1000000 for 10%",
+				"1000000  -  1200000 for 15%", "1200000  -  1500000 for 20%", "Above 1500000 for 30%");
+
+		taxMap.put("Standard Deduction: 75000", inHandSalary.add(BigInteger.valueOf(-75000)).doubleValue());
+
+		BigInteger taxableSalary = inHandSalary.add(BigInteger.valueOf(-75000));
+
+		Map<Double, Integer> taxSlabs = taxSlabs(taxableSalary);
+
+		int slabNumber = slabNumber(taxableSalary).entrySet().iterator().next().getKey();
+		int counter = 0;
+
+		if (taxableSalary.intValue() < 300000) {
+			return taxMap;
+		}
+
+		for (Map.Entry<Double, Integer> tSlabs : taxSlabs.entrySet()) {
+			incTax = ((float) (tSlabs.getKey() * tSlabs.getValue())) + incTax;
+			taxMap.put(taxSlabConstant.get(counter), (double) (tSlabs.getKey() * tSlabs.getValue()));
+			counter += 1;
+			if (counter > slabNumber) {
+				break;
+			}
+
+		}
+
+		return taxMap;
 
 	}
 
